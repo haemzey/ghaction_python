@@ -1,12 +1,5 @@
 name: Frontend CI (HTML/CSS/JS)
 
-permissions:
-  contents: read
-
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
-
 on:
   workflow_dispatch:
   pull_request:
@@ -20,6 +13,7 @@ on:
 
 env:
   NODE_VERSION: "20"
+  IMAGE_TAG: ${{ github.sha }}
 
 jobs:
   frontend-lint:
@@ -86,16 +80,18 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_TOKEN }}
       - run: |
-          docker build -t ${{ secrets.DOCKER_USERNAME }}/myclient:${{ github.sha }} ./client
-          docker push ${{ secrets.DOCKER_USERNAME }}/myclient:${{ github.sha }}
+          docker build -t myclient:${{ env.IMAGE_TAG  }} ./client
+          docker tag myclient:${{ env.IMAGE_TAG  }} ${{ secrets.DOCKER_USERNAME }}/myclient:${{ env.IMAGE_TAG  }}
+          docker push ${{ secrets.DOCKER_USERNAME }}/myclient:${{ env.IMAGE_TAG  }}
 
   frontend-docker-security:
     needs: frontend-docker-build
     runs-on: ubuntu-latest
     steps:
+      - run: docker pull ${{ secrets.DOCKER_USERNAME }}/myclient:${{ env.IMAGE_TAG  }}
       - uses: aquasecurity/trivy-action@v0.35.0
         with:
-          image-ref: ${{ secrets.DOCKER_USERNAME }}/myclient:${{ github.sha }}
+          image-ref: ${{ secrets.DOCKER_USERNAME }}/myclient:${{ env.IMAGE_TAG  }}
           severity: HIGH,CRITICAL
           exit-code: '1'
 
@@ -105,11 +101,11 @@ jobs:
     steps:
       - run: docker network create mynetwork
       - run: |
-          docker pull ${{ secrets.DOCKER_USERNAME }}/myclient:${{ github.sha }}
+          docker pull ${{ secrets.DOCKER_USERNAME }}/myclient:${{ env.IMAGE_TAG  }}
           docker run -d -p 8080:80 \
             --network mynetwork \
             --restart unless-stopped \
             --name myclient-${{ github.sha }} \
-            ${{ secrets.DOCKER_USERNAME }}/myclient:${{ github.sha }}
+            ${{ secrets.DOCKER_USERNAME }}/myclient:${{ env.IMAGE_TAG  }}
           sleep 5
       - run: curl -f http://localhost:8080/ || (echo "Smoke test failed" && exit 1)
