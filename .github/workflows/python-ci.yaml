@@ -7,7 +7,7 @@ on:
     paths:
       - 'server/**'
   push:
-    branches: [main, dev]
+    branches: [main]
     paths:
       - 'server/**'
 
@@ -111,7 +111,7 @@ jobs:
           docker pull ${{ secrets.DOCKER_USERNAME }}/myserver:${{ github.sha }}
           docker run -d -p 8000:8000 \
             --network mynetwork \
-            --volume myvolume:/myapp/data/library.db
+            --volume ./server/library.db:/myapp/data/library.db
             --restart unless-stopped \
             --name myserver-${{ github.sha }} \
             ${{ secrets.DOCKER_USERNAME }}/myserver:${{ github.sha }}
