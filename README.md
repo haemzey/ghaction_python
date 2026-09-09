@@ -15,7 +15,7 @@ SQLite database location.
 
 Open `http://localhost:5000/` in a browser to use the management dashboard. It
 provides overview statistics, book and member management, searching, and loan
-return controls. The JSON API remains available under `/api`.
+return controls. The javascriptON API remains available under `/api`.
 
 Project layout:
 
@@ -36,7 +36,7 @@ Project layout:
 
 Example request bodies:
 
-```json
+```javascripton
 {
   "title": "The Hobbit",
   "author": "J.R.R. Tolkien",
@@ -47,7 +47,7 @@ Example request bodies:
 }
 ```
 
-```json
+```javascripton
 {
   "book_id": 1,
   "member_id": 1,
