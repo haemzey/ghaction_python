@@ -7,7 +7,7 @@ on:
     paths:
       - 'client/**'
   push:
-    branches: [main, dev]
+    branches: [main] 
     paths:
       - 'client/**'
 
