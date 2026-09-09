@@ -13,7 +13,6 @@ on:
 
 env:
   NODE_VERSION: "20"
-  IMAGE_TAG: ${{ github.sha }}
 
 jobs:
   frontend-lint:
@@ -42,7 +41,7 @@ jobs:
         working-directory: client
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
@@ -58,7 +57,7 @@ jobs:
         working-directory: client
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
@@ -80,18 +79,18 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_TOKEN }}
       - run: |
-          docker build -t myclient:${{ env.IMAGE_TAG  }} ./client
-          docker tag myclient:${{ env.IMAGE_TAG  }} ${{ secrets.DOCKER_USERNAME }}/myclient:${{ env.IMAGE_TAG  }}
-          docker push ${{ secrets.DOCKER_USERNAME }}/myclient:${{ env.IMAGE_TAG  }}
+          docker build -t myclient:${{ github.sha }} ./client
+          docker tag myclient:${{ github.sha }} ${{ secrets.DOCKER_USERNAME }}/myclient:${{ github.sha }}
+          docker push ${{ secrets.DOCKER_USERNAME }}/myclient:${{ github.sha }}
 
   frontend-docker-security:
     needs: frontend-docker-build
     runs-on: ubuntu-latest
     steps:
-      - run: docker pull ${{ secrets.DOCKER_USERNAME }}/myclient:${{ env.IMAGE_TAG  }}
+      - run: docker pull ${{ secrets.DOCKER_USERNAME }}/myclient:${{ github.sha }}
       - uses: aquasecurity/trivy-action@v0.35.0
         with:
-          image-ref: ${{ secrets.DOCKER_USERNAME }}/myclient:${{ env.IMAGE_TAG  }}
+          image-ref: ${{ secrets.DOCKER_USERNAME }}/myclient:${{ github.sha }}
           severity: HIGH,CRITICAL
           exit-code: '1'
 
@@ -101,11 +100,11 @@ jobs:
     steps:
       - run: docker network create mynetwork
       - run: |
-          docker pull ${{ secrets.DOCKER_USERNAME }}/myclient:${{ env.IMAGE_TAG  }}
-          docker run -d -p 8080:80 \
+          docker pull ${{ secrets.DOCKER_USERNAME }}/myclient:${{ github.sha }}
+          docker run -d -p 8080:8080 \
             --network mynetwork \
             --restart unless-stopped \
             --name myclient-${{ github.sha }} \
-            ${{ secrets.DOCKER_USERNAME }}/myclient:${{ env.IMAGE_TAG  }}
+            ${{ secrets.DOCKER_USERNAME }}/myclient:${{ github.sha }}
           sleep 5
       - run: curl -f http://localhost:8080/ || (echo "Smoke test failed" && exit 1)
