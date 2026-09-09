@@ -13,14 +13,11 @@ services:
     networks:
       - mynetwork
 
-    volumes:
-      - ./server/:/myapp/library.db
-
     ports:
       - "8000:8000"
 
     environment:
-      LIBRARY_DB_PATH: /myapp/library.db
+     - /opt/venv/bin:$PATH
 
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/').status==200 else 1)"]
