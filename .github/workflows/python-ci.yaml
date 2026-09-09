@@ -1,12 +1,5 @@
 name: Backend CI (Python/Flask)
 
-permissions:
-  contents: read
-
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
-
 on:
   workflow_dispatch:
   pull_request:
@@ -20,6 +13,7 @@ on:
 
 env:
   PYTHON_VERSION: "3.12"
+  IMAGE_TAG: ${{ github.sha }}
 
 jobs:
   python-lint:
@@ -95,8 +89,9 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_TOKEN }}
       - run: |
-          docker build -t ${{ secrets.DOCKER_USERNAME }}/myserver:${{ github.sha }} ./server
-          docker push ${{ secrets.DOCKER_USERNAME }}/myserver:${{ github.sha }}
+          docker build -t myserver:${{ github.sha }} ./server 
+          docker tag myserver:${{ github.sha }} ${{ secrets.DOCKER_USERNAME }}/myserver:${{ env.IMAGE_TAG }}
+          docker push ${{ secrets.DOCKER_USERNAME }}/myserver:${{ env.IMAGE_TAG }}
 
   python-docker-security:
     needs: python-docker-build
@@ -104,7 +99,7 @@ jobs:
     steps:
       - uses: aquasecurity/trivy-action@v0.35.0
         with:
-          image-ref: ${{ secrets.DOCKER_USERNAME }}/myserver:${{ github.sha }}
+          image-ref: ${{ secrets.DOCKER_USERNAME }}/myserver:${{ env.IMAGE_TAG }}
           severity: HIGH,CRITICAL
           exit-code: '1'
 
@@ -114,11 +109,11 @@ jobs:
     steps:
       - run: docker network create mynetwork
       - run: |
-          docker pull ${{ secrets.DOCKER_USERNAME }}/myserver:${{ github.sha }}
+          docker pull ${{ secrets.DOCKER_USERNAME }}/myserver:${{ env.IMAGE_TAG }}
           docker run -d -p 8000:80 \
             --network mynetwork \
             --restart unless-stopped \
-            --name myserver-${{ github.sha }} \
-            ${{ secrets.DOCKER_USERNAME }}/myserver:${{ github.sha }}
+            --name myserver-${{ env.IMAGE_TAG }} \
+            ${{ secrets.DOCKER_USERNAME }}/myserver:${{ env.IMAGE_TAG }}
           sleep 10
       - run: curl -f http://localhost:8000/health || (echo "Smoke test failed" && exit 1)
