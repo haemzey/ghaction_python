@@ -1,22 +1,19 @@
-# ---- Build stage ----
-FROM node:24-alpine AS builder
+FROM nginx:alpine AS builder
 
-WORKDIR /app
+WORKDIR /myapp
 
-COPY package.json package-lock.json ./
+COPY static ./static
 
-RUN npm ci
+COPY templates ./templates
 
-COPY . .
 
-RUN npm run build
-
+RUN mkdir -p /myapp/client \
+    && cp templates/index.html /myapp/client/index.html \
+    && cp -r static /myapp/client/static
 
 FROM nginxinc/nginx-unprivileged:1.30-alpine
 
-COPY --from=builder /app/dist /usr/share/nginx/html
-
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+COPY --from=builder /myapp/client/ /usr/share/nginx/html/
 
 EXPOSE 8080
 
