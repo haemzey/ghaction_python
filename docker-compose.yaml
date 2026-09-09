@@ -14,7 +14,7 @@ services:
       - mynetwork
 
     volumes:
-      - /usr/share/python/myvolume:/myapp
+      - myvolume:/myapp/data
 
     ports:
       - "8000:8000"
@@ -58,7 +58,8 @@ services:
       server:
         condition: service_healthy
 
-
+volumes:
+  myvolume:
 networks:
   mynetwork:
     driver: bridge
