@@ -14,10 +14,13 @@ services:
       - mynetwork
 
     volumes:
-      - myvolume:/myapp/data
+      - ./server/:/myapp/library.db
 
     ports:
       - "8000:8000"
+
+    environment:
+      LIBRARY_DB_PATH: /myapp/library.db
 
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/').status==200 else 1)"]
@@ -58,8 +61,6 @@ services:
       server:
         condition: service_healthy
 
-volumes:
-  myvolume:
 networks:
   mynetwork:
     driver: bridge
