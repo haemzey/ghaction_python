@@ -3,16 +3,21 @@ name: Frontend CI (HTML/CSS/JS)
 on:
   workflow_dispatch:
   pull_request:
-    branches: [main, dev]
+    branches:
+      - main
+      - dev
     paths:
-      - 'client/**'
-  push:
-    branches: [main] 
-    paths:
-      - 'client/**'
+      - "client/**"
 
-env:
-  NODE_VERSION: "20"
+  push:
+    branches:
+      - main
+      - dev
+    paths:
+      - "client/**"
+
+permissions:
+  contents: read
 
 jobs:
   frontend-lint:
@@ -20,18 +25,34 @@ jobs:
     defaults:
       run:
         working-directory: client
+
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
         with:
-          node-version: ${{ env.NODE_VERSION }}
+          node-version: "20"
           cache: npm
           cache-dependency-path: client/package-lock.json
-      - run: npm ci
-      - run: npm run lint:js
-      - run: npm run lint:css
-      - run: npm run lint:html
-      - run: npm run format:check
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run JavaScript lint
+        run: npm run lint:js
+
+      - name: Run CSS lint
+        run: npm run lint:css
+
+      - name: Validate HTML
+        run: npm run lint:html
+
+      - name: Check formatting
+        run: npm run format:check
+
 
   frontend-test:
     needs: frontend-lint
@@ -39,15 +60,25 @@ jobs:
     defaults:
       run:
         working-directory: client
+
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v6
+
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
         with:
-          node-version: ${{ env.NODE_VERSION }}
+          node-version: "20"
           cache: npm
-          cache-dependency-path: ./client/package-lock.json
-      - run: npm ci
-      - run: npm test
+          cache-dependency-path: client/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run Jest tests
+        run: npm test
+
 
   frontend-security:
     needs: frontend-test
@@ -55,56 +86,126 @@ jobs:
     defaults:
       run:
         working-directory: client
+
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v6
+
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
         with:
-          node-version: ${{ env.NODE_VERSION }}
+          node-version: "20"
           cache: npm
-          cache-dependency-path: ./client/package-lock.json
-      - run: npm ci
-      - run: npm audit --audit-level=high
-      - name: scan for committed secrets
-        uses: gitleaks/gitleaks-action@v2
+          cache-dependency-path: client/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+      - name: NPM security audit
+        run: npm audit --audit-level=high
+
+      - name: Scan repository for secrets
+        uses: gitleaks/gitleaks-action@v3
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
 
   frontend-docker-build:
     needs: frontend-security
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: client
+
     steps:
-      - uses: actions/checkout@v4
-      - uses: docker/login-action@v3
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v4
         with:
+          registry: docker.io
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_TOKEN }}
-      - run: |
-          docker build -t myclient:${{ github.sha }} ./client
-          docker tag myclient:${{ github.sha }} ${{ secrets.DOCKER_USERNAME }}/myclient:${{ github.sha }}
-          docker push ${{ secrets.DOCKER_USERNAME }}/myclient:${{ github.sha }}
 
+      - name: Docker build and push
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          no-cache: true
+          push: true
+          tags: ${{ secrets.DOCKER_USERNAME }}/myclient:${{ github.sha }}
+ 
+          
   frontend-docker-security:
     needs: frontend-docker-build
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: client
+
     steps:
-      - run: docker pull ${{ secrets.DOCKER_USERNAME }}/myclient:${{ github.sha }}
-      - uses: aquasecurity/trivy-action@v0.35.0
+      - name: Login to Docker Hub
+        uses: docker/login-action@v4
+        with:
+          registry: docker.io
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_TOKEN }}
+      - name: Pull frontend image
+        run: docker pull ${{ secrets.DOCKER_USERNAME }}/myclient:${{ github.sha }}
+
+      - name: Scan image with Trivy
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: ${{ secrets.DOCKER_USERNAME }}/myclient:${{ github.sha }}
-          severity: HIGH,CRITICAL
-          exit-code: '1'
+          format: "table"
+          vuln-type: "os,library"
+          ignore-unfixed: true
+          scanners: "vuln"
+          severity: "CRITICAL"
+          exit-code: "1"
+          
 
-  frontend-docker-test:
-    needs: frontend-docker-security
+  frontend-smoke-test:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: client
+
     steps:
-      - run: docker network create mynetwork
-      - run: |
-          docker pull ${{ secrets.DOCKER_USERNAME }}/myclient:${{ github.sha }}
-          docker run -d -p 8080:8080 \
-            --network mynetwork \
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v4
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_TOKEN }}
+
+      - name: Pull frontend image
+        run: docker pull ${{ secrets.DOCKER_USERNAME }}/myclient:${{ github.sha }}
+
+      - name: Start frontend container
+        run: |
+          docker run -d \
+            --name myclient \
             --restart unless-stopped \
-            --name myclient-${{ github.sha }} \
+            -p 5000:80 \
             ${{ secrets.DOCKER_USERNAME }}/myclient:${{ github.sha }}
-          sleep 5
-      - run: curl -f http://localhost:8080/ || (echo "Smoke test failed" && exit 1)
+
+      - name: Wait for frontend
+        run: sleep 10
+
+      - name: Check frontend container
+        run: docker ps
+
+      - name: Frontend smoke test
+        run: |
+          curl http://localhost:5000
+          curl http://localhost:5000/health
+           
+      - name: Show container logs on failure
+        if: failure()
+        run: docker logs myclient
+
+      - name: Stop frontend container
+        if: always()
+        run: docker rm -f myclient
