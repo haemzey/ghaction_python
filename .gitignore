@@ -1,8 +1,10 @@
 .venv
 server/__pycache__
-client/.dockerignore
-server/.dockerignore
+server/__pycache__/*.pyc
 library.db
 library.db-journal
 library.db-wal
 library.db-shm
+.dockerignore
+client/node_modules
+node_modules
