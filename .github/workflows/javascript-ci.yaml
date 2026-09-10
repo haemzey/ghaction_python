@@ -167,6 +167,7 @@ jobs:
           
 
   frontend-smoke-test:
+    needs: frontend-docker-security
     runs-on: ubuntu-latest
     defaults:
       run:
