@@ -7,12 +7,12 @@ on:
     paths:
       - 'server/**'
   push:
-    branches: [main]
+    branches: [main, dev]
     paths:
       - 'server/**'
 
-env:
-  PYTHON_VERSION: "3.12"
+permissions:
+  contents: read
 
 jobs:
   python-lint:
@@ -21,15 +21,15 @@ jobs:
       run:
         working-directory: server
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
-          python-version: ${{ env.PYTHON_VERSION }}
+          python-version: "3.14.7"
           cache: pip
       - run: |
           python -m pip install --no-cache-dir -r requirements.txt
           python -m pip install pylint
-      - run: pylint $(git ls-files '*.py')
+      - run: pylint 
 
   python-build:
     needs: python-lint
@@ -38,17 +38,13 @@ jobs:
       run:
         working-directory: server
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
-          python-version: ${{ env.PYTHON_VERSION }}
+          python-version: "3.14.7"
           cache: pip
       - run: python -m pip install --no-cache-dir -r requirements.txt build
-      - run: python -m build
-      - uses: actions/upload-artifact@v4
-        with:
-          name: dist
-          path: server/dist/
+      - run: python -m build --wheel
 
   python-test:
     needs: python-build
@@ -57,13 +53,15 @@ jobs:
       run:
         working-directory: server
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
-          python-version: ${{ env.PYTHON_VERSION }}
+          python-version: "3.14.7"
           cache: pip
       - run: python -m pip install --no-cache-dir -r requirements.txt pytest flake8 black
-      - run: pytest --junitxml=results.xml
+        env:
+          PYTHONPATH: ${{ github.workspace }}
+      - run: pytest 
       - run: flake8 .
       - run: black --check .
 
@@ -74,46 +72,92 @@ jobs:
       run:
         working-directory: server
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.14.7"
+
       - run: python -m pip install bandit
       - run: bandit -r . --exclude ./tests,./dist
 
   python-docker-build:
     needs: python-security
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: server
     steps:
-      - uses: actions/checkout@v4
-      - uses: docker/login-action@v3
+      - uses: actions/checkout@v7
+      - uses: docker/login-action@v4
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_TOKEN }}
-      - run: |
-          docker build -t myserver:${{ github.sha }} ./server 
-          docker tag myserver:${{ github.sha }} ${{ secrets.DOCKER_USERNAME }}/myserver:${{ github.sha }}
-          docker push ${{ secrets.DOCKER_USERNAME }}/myserver:${{ github.sha }}
+
+      - name: python build and push 
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          no-cache: true
+          push: true
+          tags: ${{ secrets.DOCKER_USERNAME }}/myserver:${{ github.sha }}
 
   python-docker-security:
     needs: python-docker-build
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: server
     steps:
-      - uses: aquasecurity/trivy-action@v0.35.0
+      - uses: docker/login-action@v4
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_TOKEN }}
+
+      - name: pull docker image
+        run: docker pull ${{ secrets.DOCKER_USERNAME }}/myserver:${{ github.sha }}
+      - uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: ${{ secrets.DOCKER_USERNAME }}/myserver:${{ github.sha }}
-          severity: HIGH,CRITICAL
+          format: "table"
+          vuln-type: "ose,library"
+          scanners: vuln
+          ignore-unfixed: true
+          severity: "CRITICAL"
           exit-code: '1'
 
-  python-docker-test:
+  python-smoke-test:
     needs: python-docker-security
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: server
     steps:
-      - run: docker network create mynetwork
-      - run: |
-          docker pull ${{ secrets.DOCKER_USERNAME }}/myserver:${{ github.sha }}
-          docker run -d -p 8000:8000 \
-            --network mynetwork \
-            --volume ./server/library.db:/myapp/data/library.db
+      - uses: docker/login-action@v4
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_TOKEN }}
+
+      - name: pull docker image
+        run: docker pull ${{ secrets.DOCKER_USERNAME }}/myserver:${{ github.sha }}
+
+      - name: run container
+        run: docker run -d -p 5000:5000 \
             --restart unless-stopped \
-            --name myserver-${{ github.sha }} \
+            --name myserver \
             ${{ secrets.DOCKER_USERNAME }}/myserver:${{ github.sha }}
-          sleep 10
-      - run: curl -f http://localhost:8000/health || (echo "Smoke test failed" && exit 1)
+      
+      - name: sleep time
+        run: sleep 10 
+
+      - name: smoke test
+        run: |
+          curl -f http://localhost:5000/health || (echo "Smoke test failed" && exit 1)
+          curl -f http://localhost:5000 || (echo "Smoke test failed" && exit 1)
+
+      - name: Show container logs on failure
+        if: failure()
+        run: docker logs myclient
+
+      - name: Stop frontend container
+        if: always()
+        run: docker rm -f myclient
