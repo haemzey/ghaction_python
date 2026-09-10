@@ -1,5 +1,4 @@
-# ---- Build stage ----
-FROM python:3.12.7-slim AS builder
+FROM python:3.14.7-slim AS builder
 
 WORKDIR /myapp
 
@@ -11,8 +10,10 @@ COPY requirements.txt .
 
 RUN pip install --no-cache-dir -r requirements.txt
 
-# ---- Runtime stage ----
-FROM python:3.12.7-slim
+FROM python:3.14.7-slim AS runtime
+
+RUN groupadd --system --gid 1001 appuser \
+    && useradd --system --uid 1001 --gid 1001 appuser
 
 WORKDIR /myapp
 
@@ -24,6 +25,8 @@ ENV PATH="/opt/venv/bin:$PATH" \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
 
-EXPOSE 5000 
+EXPOSE 5000
 
-CMD ["python", "app.py"]
+USER appuser
+
+CMD ["gunicorn", "--bind", "0.0.0.0:5000", "app:app"]
