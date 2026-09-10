@@ -1,20 +1,8 @@
-FROM nginx:alpine AS builder
+FROM nginx:alpine
 
-WORKDIR /myapp
+COPY templates/index.html /usr/share/nginx/html/index.html
+COPY static/ /usr/share/nginx/html/static/
 
-COPY static ./static
-
-COPY templates ./templates
-
-
-RUN mkdir -p /myapp/client \
-    && cp templates/index.html /myapp/client/index.html \
-    && cp -r static /myapp/client/static
-
-FROM nginxinc/nginx-unprivileged:1.30-alpine
-
-COPY --from=builder /myapp/client/ /usr/share/nginx/html/
-
-EXPOSE 8080
+EXPOSE 80
 
 CMD ["nginx", "-g", "daemon off;"]
