@@ -147,4 +147,4 @@ jobs:
 
       - name: Stop frontend container
         if: always()
-        run: docker rm -f myclient
+        run: docker rm -f myclient 
