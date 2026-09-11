@@ -1,0 +1,145 @@
+name: Client Workflow
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches:
+      - main
+      - dev
+    paths:
+      - "client/**"
+  push:
+    branches:
+      - main
+      - dev
+    paths:
+      - "client/**"
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  frontend-test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: client
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: client/package-lock.json
+      - name: Install dependencies
+        run: npm ci
+      - name: Run Jest tests
+        run: npm test
+
+  frontend-security:
+    needs: frontend-test
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: client
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: client/package-lock.json
+      - name: Install dependencies
+        run: npm ci
+      - name: NPM security audit
+        run: npm audit --audit-level=high
+      - name: Scan repository for secrets
+        uses: gitleaks/gitleaks-action@v3
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  frontend-docker-build:
+    needs: frontend-security
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: client
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+      - name: Login to Docker Hub
+        uses: docker/login-action@v4
+        with:
+          registry: docker.io
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_TOKEN }}
+      - name: Docker build and push
+        uses: docker/build-push-action@v4
+        with:
+          context: ./client
+          no-cache: true
+          push: true
+          tags: ${{ secrets.DOCKER_USERNAME }}/myclient:${{ github.sha }}
+
+  frontend-docker-security:
+    needs: frontend-docker-build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Login to Docker Hub
+        uses: docker/login-action@v4
+        with:
+          registry: docker.io
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_TOKEN }}
+      - name: Pull frontend image
+        run: docker pull ${{ secrets.DOCKER_USERNAME }}/myclient:${{ github.sha }}
+      - name: Scan image with Trivy
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: ${{ secrets.DOCKER_USERNAME }}/myclient:${{ github.sha }}
+          format: "table"
+          vuln-type: "os,library"
+          ignore-unfixed: true
+          scanners: "vuln"
+          severity: "CRITICAL"
+          exit-code: "1"
+
+  frontend-smoke-test:
+    needs: frontend-docker-security
+    runs-on: ubuntu-latest
+    steps:
+      - name: Login to Docker Hub
+        uses: docker/login-action@v4
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_TOKEN }}
+      - name: Pull frontend image
+        run: docker pull ${{ secrets.DOCKER_USERNAME }}/myclient:${{ github.sha }}
+      - name: Start frontend container
+        run: |
+          docker run -d \
+            --name myclient \
+            --restart unless-stopped \
+            -p 5000:80 \
+            ${{ secrets.DOCKER_USERNAME }}/myclient:${{ github.sha }}
+      - name: Wait for frontend
+        run: sleep 10
+      - name: Check frontend container
+        run: docker ps
+      - name: Frontend smoke test
+        run: |
+          curl -f http://localhost:5000 || (echo "Smoke test failed" && exit 1)
+      - name: Show container logs on failure
+        if: failure()
+        run: docker logs myclient
+      - name: Stop frontend container
+        if: always()
+        run: docker rm -f myclient
