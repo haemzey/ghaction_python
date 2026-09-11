@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Library | Management Dashboard</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <aside class="sidebar">
+    <div class="brand"><span class="brand-mark">L</span><span>Libra<span class="accent">ry</span></span></div>
+    <p class="eyebrow">Workspace</p>
+    <nav>
+      <button class="nav-item active" data-section="overview"><span>▦</span> Overview</button>
+      <button class="nav-item" data-section="books"><span>▤</span> Books</button>
+      <button class="nav-item" data-section="members"><span>♙</span> Members</button>
+      <button class="nav-item" data-section="loans"><span>↗</span> Loans</button>
+    </nav>
+    <div class="sidebar-footer"><span class="status-dot"></span> System operational</div>
+  </aside>
+
+  <main class="main">
+    <header class="topbar">
+      <div><p class="eyebrow">Library management</p><h1 id="page-title">Overview</h1></div>
+      <div class="top-actions"><button class="icon-button" id="refresh-btn" title="Refresh">↻</button><span class="avatar">A</span></div>
+    </header>
+
+    <div id="alert" class="alert hidden"></div>
+
+    <section id="overview-section" class="page-section">
+      <div class="welcome"><div><p class="eyebrow">Good day</p><h2>Your library at a glance</h2><p class="muted">Track your collection and keep every loan organized.</p></div><button class="primary" data-open-modal="book-modal">＋ Add book</button></div>
+      <div class="stats-grid">
+        <article class="stat-card"><span class="stat-icon purple">▤</span><div><p class="muted">Total books</p><strong id="total-books">0</strong></div></article>
+        <article class="stat-card"><span class="stat-icon blue">◫</span><div><p class="muted">Available copies</p><strong id="available-copies">0</strong></div></article>
+        <article class="stat-card"><span class="stat-icon orange">↗</span><div><p class="muted">Active loans</p><strong id="active-loans">0</strong></div></article>
+        <article class="stat-card"><span class="stat-icon green">♙</span><div><p class="muted">Active members</p><strong id="active-members">0</strong></div></article>
+      </div>
+      <div class="content-grid">
+        <article class="panel"><div class="panel-heading"><div><h3>Recent loans</h3><p class="muted">Latest borrowing activity</p></div><button class="text-button" data-section-link="loans">View all →</button></div><div id="recent-loans" class="table-wrap"></div></article>
+        <article class="panel"><div class="panel-heading"><div><h3>Collection</h3><p class="muted">Your library inventory</p></div><button class="text-button" data-section-link="books">View all →</button></div><div id="collection-list"></div></article>
+      </div>
+    </section>
+
+    <section id="books-section" class="page-section hidden">
+      <div class="section-heading"><div><h2>Books</h2><p class="muted">Manage your library collection.</p></div><button class="primary" data-open-modal="book-modal">＋ Add book</button></div>
+      <div class="toolbar"><input id="book-search" placeholder="Search by title, author, or ISBN"><select id="category-filter"><option value="">All categories</option></select></div>
+      <article class="panel"><div id="books-table" class="table-wrap"></div></article>
+    </section>
+
+    <section id="members-section" class="page-section hidden">
+      <div class="section-heading"><div><h2>Members</h2><p class="muted">People who can borrow books.</p></div><button class="primary" data-open-modal="member-modal">＋ Add member</button></div>
+      <article class="panel"><div id="members-table" class="table-wrap"></div></article>
+    </section>
+
+    <section id="loans-section" class="page-section hidden">
+      <div class="section-heading"><div><h2>Loans</h2><p class="muted">Monitor borrowed and returned books.</p></div><button class="primary" data-open-modal="loan-modal">＋ New loan</button></div>
+      <div class="toolbar"><select id="loan-filter"><option value="">All loans</option><option value="true">Active loans</option><option value="false">Returned loans</option></select></div>
+      <article class="panel"><div id="loans-table" class="table-wrap"></div></article>
+    </section>
+  </main>
+
+  <div id="book-modal" class="modal hidden"><form class="modal-card" id="book-form"><div class="modal-heading"><h2>Add a book</h2><button type="button" class="close" data-close-modal>×</button></div><label>Title<input name="title" required></label><label>Author<input name="author" required></label><div class="form-row"><label>ISBN<input name="isbn"></label><label>Category<input name="category"></label></div><div class="form-row"><label>Published year<input name="published_year" type="number" min="0"></label><label>Total copies<input name="total_copies" type="number" min="1" value="1" required></label></div><button class="primary full" type="submit">Save book</button></form></div>
+  <div id="member-modal" class="modal hidden"><form class="modal-card" id="member-form"><div class="modal-heading"><h2>Add a member</h2><button type="button" class="close" data-close-modal>×</button></div><label>Full name<input name="name" required></label><label>Email<input name="email" type="email" required></label><label>Phone<input name="phone"></label><button class="primary full" type="submit">Save member</button></form></div>
+  <div id="loan-modal" class="modal hidden"><form class="modal-card" id="loan-form"><div class="modal-heading"><h2>Create a loan</h2><button type="button" class="close" data-close-modal>×</button></div><label>Book<select name="book_id" id="loan-book" required></select></label><label>Member<select name="member_id" id="loan-member" required></select></label><label>Loan days<input name="loan_days" type="number" min="1" value="14" required></label><button class="primary full" type="submit">Borrow book</button></form></div>
+  <script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>
