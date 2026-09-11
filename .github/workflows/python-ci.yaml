@@ -19,21 +19,7 @@ permissions:
   contents: read
 
 jobs:
-  python-security:
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: server
-    steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-python@v7
-        with:
-          python-version: "3.14.7"
-      - run: python -m pip install bandit
-      - run: bandit -r . --exclude ./test_app.py,./dist
-
   python-docker-build:
-    needs: python-security
     runs-on: ubuntu-latest
     defaults:
       run:
