@@ -1,56 +1,161 @@
-# Library Management API
+# Library Management System
 
-A Flask + SQLite backend for managing books, members, and loans.
+A full-stack Library Management System built with **Python Flask**, **HTML/CSS/JavaScript**, **SQLite**, and **Docker**.
 
-## Run
+## Tech Stack
 
-```powershell
+* **Backend:** Python, Flask, Gunicorn
+* **Frontend:** HTML, CSS, JavaScript
+* **Database:** SQLite
+* **Web Server:** Nginx
+* **Containerization:** Docker, Docker Compose
+* **CI/CD:** GitHub Actions
+* **Testing:** Pytest, Jest
+* **Code Quality:** Pylint, ESLint, Stylelint, HTML Validate, Prettier
+* **Security:** Gitleaks, Trivy
+* **Registry:** Docker Hub
+
+## Project Structure
+
+```text
+ghaction_python/
+├── client/
+│   ├── static/
+│   │   ├── app.js
+│   │   └── style.css
+│   ├── templates/
+│   │   └── index.html
+│   ├── Dockerfile
+│   ├── nginx.conf
+│   ├── package.json
+│   └── package-lock.json
+│
+├── server/
+│   ├── app.py
+│   ├── test_app.py
+│   ├── requirements.txt
+│   └── Dockerfile
+│
+├── docker-compose.yml
+└── README.md
+```
+
+## Features
+
+* Book management
+* Member management
+* Book borrowing and returning
+* Loan tracking
+* Book search and filtering
+* Library statistics
+* REST API
+* Automated testing
+* Dockerized application
+* Automated CI security checks
+
+## Backend API
+
+The Flask backend provides REST API endpoints for:
+
+```text
+GET    /api/health
+GET    /api/books
+POST   /api/books
+GET    /api/books/<id>
+PUT    /api/books/<id>
+DELETE /api/books/<id>
+
+GET    /api/members
+POST   /api/members
+PATCH  /api/members/<id>
+
+POST   /api/loans
+POST   /api/loans/<id>/return
+GET    /api/loans
+
+GET    /api/stats
+```
+
+## Run Locally
+
+### Backend
+
+```bash
 cd server
+
+python -m venv .venv
+source .venv/bin/activate
+
 pip install -r requirements.txt
+
 python app.py
 ```
 
-The API runs on `http://localhost:5000`. Set `LIBRARY_DB_PATH` to use a different
-SQLite database location.
+The backend runs on:
 
-Open `http://localhost:5000/` in a browser to use the management dashboard. It
-provides overview statistics, book and member management, searching, and loan
-return controls. The javascriptON API remains available under `/api`.
-
-Project layout:
-
-- `client/` contains the dashboard HTML, CSS, and JavaScript.
-- `server/` contains the Flask API, SQLite database, and Python dependencies.
-
-## Endpoints
-
-- `GET /api/health`
-- `GET|POST /api/books`
-- `GET|PUT|DELETE /api/books/<book_id>`
-- `GET|POST /api/members`
-- `PATCH /api/members/<member_id>`
-- `GET|POST /api/loans`
-- `POST /api/loans/<loan_id>/return`
-- `GET /api/loans?active=true|false`
-- `GET /api/stats`
-
-Example request bodies:
-
-```javascripton
-{
-  "title": "The Hobbit",
-  "author": "J.R.R. Tolkien",
-  "isbn": "9780261102217",
-  "category": "Fantasy",
-  "published_year": 1937,
-  "total_copies": 3
-}
+```text
+http://localhost:5000
 ```
 
-```javascripton
-{
-  "book_id": 1,
-  "member_id": 1,
-  "loan_days": 14
-}
+### Run Tests
+
+```bash
+cd server
+pytest -v
 ```
+
+### Frontend
+
+The frontend is served through Nginx in the Docker environment.
+
+## Docker
+
+Build and run the application with Docker Compose:
+
+```bash
+docker compose up --build
+```
+
+Stop the application:
+
+```bash
+docker compose down
+```
+
+The application can then be accessed through:
+
+```text
+http://localhost
+```
+
+## GitHub Actions
+
+The project uses GitHub Actions to automate CI/CD.
+
+The backend workflow validates changes under `server/` and performs:
+
+```text
+Lint → Test → Docker Build → Gitleaks → Trivy → Smoke Test
+```
+
+The frontend workflow validates changes under `client/` using:
+
+```text
+ESLint
+Stylelint
+HTML Validate
+Prettier
+Jest
+```
+
+### Security
+
+**Gitleaks** scans the repository for accidentally committed secrets.
+
+**Trivy** scans Docker images for vulnerabilities in:
+
+* Operating system packages
+* Application dependencies
+
+![alt text](image-1.png)
+
