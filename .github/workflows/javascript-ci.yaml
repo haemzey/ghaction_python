@@ -1,4 +1,4 @@
-name: Frontend CI (HTML/CSS/JS)
+name: Client Workflow
 
 on:
   workflow_dispatch:
@@ -95,7 +95,7 @@ jobs:
       - name: Docker build and push
         uses: docker/build-push-action@v4
         with:
-          context: .
+          context: ./
           no-cache: true
           push: true
           tags: ${{ secrets.DOCKER_USERNAME }}/myclient:${{ github.sha }}

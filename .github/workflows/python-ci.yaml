@@ -1,7 +1,7 @@
-name: Backend CI (Python/Flask)
+name: Server Workflow
 
 on:
-  
+
   workflow_dispatch:
   pull_request:
     branches: 
@@ -84,7 +84,7 @@ jobs:
       - name: python build and push 
         uses: docker/build-push-action@v4
         with:
-          context: .
+          context: ./server
           no-cache: true
           push: true
           tags: ${{ secrets.DOCKER_USERNAME }}/myserver:${{ github.sha }}
@@ -107,7 +107,7 @@ jobs:
         with:
           image-ref: ${{ secrets.DOCKER_USERNAME }}/myserver:${{ github.sha }}
           format: "table"
-          vuln-type: "ose,library"
+          vuln-type: "os,library"
           scanners: vuln
           ignore-unfixed: true
           severity: "CRITICAL"
@@ -144,8 +144,8 @@ jobs:
 
       - name: Show container logs on failure
         if: failure()
-        run: docker logs myclient
+        run: docker logs myserver
 
       - name: Stop frontend container
         if: always()
-        run: docker rm -f myclient 
+        run: docker rm -f myserver
