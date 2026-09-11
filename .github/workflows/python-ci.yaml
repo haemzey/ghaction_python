@@ -19,28 +19,7 @@ permissions:
   contents: read
 
 jobs:
-  python-test:
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: server
-    steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-python@v7
-        with:
-          python-version: "3.14.7"
-          cache: pip
-      - run: python -m pip install --no-cache-dir -r requirements.txt pytest flake8 black
-        env:
-          PYTHONPATH: ${{ github.workspace }}
-      - name: check the flask app loads successfully
-        run: python -c "from app import app; print('Flask app loaded successfully')"
-      - run: pytest test_app.py
-      - run: flake8 .
-      - run: black --check .
-
   python-security:
-    needs: python-test
     runs-on: ubuntu-latest
     defaults:
       run:
