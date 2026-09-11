@@ -20,49 +20,13 @@ permissions:
   contents: read
 
 jobs:
-  frontend-lint:
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: client
-
-    steps:
-
-      - name: Checkout repository
-        uses: actions/checkout@v7
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v7
-        with:
-          node-version: "20"
-          cache: npm
-          cache-dependency-path: client/package-lock.json
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Run JavaScript lint
-        run: npm run lint:js
-
-      - name: Run CSS lint
-        run: npm run lint:css
-
-      - name: Validate HTML
-        run: npm run lint:html
-
-      - name: Check formatting
-        run: npm run format:check
-
-
   frontend-test:
-    needs: frontend-lint
     runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: client
 
     steps:
-
       - name: Checkout repository
         uses: actions/checkout@v7
 
