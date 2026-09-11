@@ -19,22 +19,7 @@ permissions:
   contents: read
 
 jobs:
-  python-build:
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: server
-    steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-python@v7
-        with:
-          python-version: "3.14.7"
-          cache: pip
-      - run: python -m pip install --no-cache-dir -r requirements.txt build
-      - run: python -m build --wheel
-
   python-test:
-    needs: python-build
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -48,6 +33,8 @@ jobs:
       - run: python -m pip install --no-cache-dir -r requirements.txt pytest flake8 black
         env:
           PYTHONPATH: ${{ github.workspace }}
+      - name: check the flask app loads successfully
+        run: python -c "from app import app; print('Flask app loaded successfully')"
       - run: pytest test_app.py
       - run: flake8 .
       - run: black --check .
@@ -89,9 +76,6 @@ jobs:
   python-docker-security:
     needs: python-docker-build
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: server
     steps:
       - uses: docker/login-action@v4
         with:
@@ -112,9 +96,6 @@ jobs:
   python-smoke-test:
     needs: python-docker-security
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: server
     steps:
       - uses: docker/login-action@v4
         with:
