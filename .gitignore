@@ -1,0 +1,6 @@
+.venv
+server/__pycache__
+server/__pycache__/*.pyc
+.dockerignore
+client/node_modules
+node_modules
