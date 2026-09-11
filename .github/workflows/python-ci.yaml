@@ -3,11 +3,15 @@ name: Backend CI (Python/Flask)
 on:
   workflow_dispatch:
   pull_request:
-    branches: [main, dev]
+    branches: 
+      - main
+      - dev
     paths:
       - 'server/**'
   push:
-    branches: [main, dev]
+    branches: 
+      - main
+      - dev
     paths:
       - 'server/**'
 
