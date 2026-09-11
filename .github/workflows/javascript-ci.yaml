@@ -132,7 +132,7 @@ jobs:
         run: docker ps
       - name: Frontend smoke test
         run: |
-          curl -f http://localhost:5000 || (echo "Smoke test failed" && exit 1)
+          curl -f http://localhost:5000/health || (echo "Smoke test failed" && exit 1)
       - name: Show container logs on failure
         if: failure()
         run: docker logs myclient
